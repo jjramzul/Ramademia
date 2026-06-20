@@ -1,0 +1,101 @@
+:root {
+  --bg: #f5f5f7;
+  --surface: rgba(255, 255, 255, 0.72);
+  --surface-border: rgba(255, 255, 255, 0.45);
+  --text: #1d1d1f;
+  --secondary: #6e6e73;
+  --accent: #0071e3;
+}
+
+body {
+  margin: 0;
+  background: linear-gradient(
+    180deg,
+    #f8f9fb 0%,
+    #eef4ff 100%
+  );
+  color: var(--text);
+  font-family: Inter, SF Pro Display, system-ui, sans-serif;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+.apple-surface {
+  background: var(--surface);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--surface-border);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.06);
+}
+
+.roadmap-node {
+  width: 56px;
+  height: 56px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  transition: all 0.25s ease;
+}
+
+.roadmap-node:hover {
+  transform: scale(1.05);
+}
+
+.roadmap-line {
+  width: 2px;
+  height: 72px;
+  background: rgba(0, 0, 0, 0.12);
+}
+
+.apple-title {
+  font-size: clamp(2.5rem, 5vw, 4rem);
+  font-weight: 700;
+  letter-spacing: -0.04em;
+}
+
+.apple-subtitle {
+  color: var(--secondary);
+  font-size: 1rem;
+}
+
+.apple-progress {
+  height: 12px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.08);
+}
+
+.apple-progress-fill {
+  height: 100%;
+  background: var(--text);
+  border-radius: 999px;
+  transition: width 0.4s ease;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
