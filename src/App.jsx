@@ -598,6 +598,48 @@ const normalizeVideoUrl = (url) => {
     await loadAllMissions();
   };
 
+  const resetMissionProgress = async (mission) => {
+    const confirmed = window.confirm(
+      `¿Reiniciar el progreso de la misión "${mission.title}" para todos los usuarios?`
+    );
+
+    if (!confirmed) return;
+
+    try {
+      const submissionsSnapshot = await getDocs(
+        query(
+          collection(db, "submissions"),
+          where("missionId", "==", mission.id)
+        )
+      );
+
+      await Promise.all(
+        submissionsSnapshot.docs.map((submission) =>
+          deleteDoc(doc(db, "submissions", submission.id))
+        )
+      );
+
+      const sessionsSnapshot = await getDocs(
+        query(
+          collection(db, "mission_sessions"),
+          where("missionId", "==", mission.id)
+        )
+      );
+
+      await Promise.all(
+        sessionsSnapshot.docs.map((session) =>
+          deleteDoc(doc(db, "mission_sessions", session.id))
+        )
+      );
+
+      await loadScores();
+      alert("Progreso reiniciado correctamente");
+    } catch (error) {
+      console.error(error);
+      alert("Error reiniciando progreso");
+    }
+  };
+
   const reviewSubmission = async (
     submissionId,
     approved
@@ -1302,23 +1344,23 @@ const submitMission = async () => {
               Siguiente misión
             </p>
 
-            <h2 className="text-2xl sm:text-3xl font-semibold tracking-tight">
-              {nextMission.title}
-            </h2>
+            <div className="flex items-center justify-between gap-4">
+              <h2 className="text-2xl sm:text-3xl font-semibold tracking-tight">
+                {nextMission.title}
+              </h2>
 
+              <button
+                className="px-6 py-3 rounded-2xl bg-black text-white shrink-0"
+                onClick={() => openMission(nextMission)}
+              >
+                Comenzar
+              </button>
+            </div>
 
-
-            <div className="mt-5 flex flex-wrap gap-3 sm:gap-5 text-sm text-zinc-500">
+            <div className="mt-4 flex flex-wrap gap-3 sm:gap-5 text-sm text-zinc-500">
               <span>{nextMission.estimatedMinutes} min</span>
               <span>{getMissionXp(nextMission)} XP</span>
             </div>
-
-            <button
-              className="mt-8 w-full sm:w-auto px-6 py-3 rounded-2xl bg-black text-white"
-              onClick={() => openMission(nextMission)}
-            >
-              Comenzar
-            </button>
           </div>
         ) : (
           <div className="bg-white/70 backdrop-blur-xl rounded-[32px] p-8 border border-white/50 text-center max-w-2xl mx-auto">
@@ -1336,23 +1378,65 @@ const submitMission = async () => {
   }
 
   if (screen === "score") {
+    const ranking = Object.entries(scores)
+      .sort((a, b) => b[1] - a[1]);
+
+    const leader = ranking[0];
+
     return (
       <Layout
         user={user}
         setScreen={setScreen}
-        title="Puntaje"
+        title="Ranking"
         activeScreen="score"
       >
-        <div className="space-y-4">
-          <ScoreCard
-            name="Simón"
-            points={scores["Simón"] || 0}
-          />
+        <div className="text-center mb-8">
+          <h1 className="text-4xl font-semibold">
+            Ranking
+          </h1>
 
-          <ScoreCard
-            name="Tomás"
-            points={scores["Tomás"] || 0}
-          />
+          <p className="mt-2 text-zinc-500">
+            Completa misiones y alcanza el primer lugar.
+          </p>
+        </div>
+
+        <div className="bg-black text-white rounded-3xl p-8 text-center mb-6">
+          <p className="text-zinc-300 text-sm">
+            Líder actual
+          </p>
+
+          <h2 className="text-3xl font-semibold mt-2">
+            {leader?.[0]}
+          </h2>
+
+          <p className="mt-2 text-zinc-300">
+            {leader?.[1]} XP
+          </p>
+        </div>
+
+        <div className="space-y-3">
+          {ranking.map(([name, xp], index) => (
+            <div
+              key={name}
+              className={`bg-white rounded-3xl p-6 border flex justify-between items-center ${index === 0 ? "border-black" : "border-zinc-200"}`}
+            >
+              <div>
+                <p className="font-semibold text-lg">
+                  #{index + 1} {name}
+                </p>
+
+                <p className="text-sm text-zinc-500">
+                  {index === 0
+                    ? "Primer lugar"
+                    : `${leader[1] - xp} XP para alcanzarlo`}
+                </p>
+              </div>
+
+              <span className="font-semibold">
+                {xp} XP
+              </span>
+            </div>
+          ))}
         </div>
       </Layout>
     );
@@ -1598,7 +1682,13 @@ const submitMission = async () => {
                               >
                                 <Pencil size={16} />
                               </button>
-
+                              <button
+                                className="px-3 py-2 border rounded-xl"
+                                onClick={() => resetMissionProgress(mission)}
+                                title="Reiniciar progreso"
+                              >
+                                🔄
+                              </button>
                               <button
                                 className="px-3 py-2 border rounded-xl"
                                 onClick={() => removeMission(mission.id)}
@@ -1833,13 +1923,6 @@ const submitMission = async () => {
 
           <button
             className="mt-4 px-4 py-2 rounded-xl border border-zinc-200 w-full"
-            onClick={() => setScreen("admin")}
-          >
-            Administrador
-          </button>
-
-          <button
-            className="mt-4 px-4 py-2 rounded-xl border border-zinc-200 w-full"
             onClick={async () => {
               await loadUserSubmissions();
               setScreen("submissions");
@@ -1849,13 +1932,22 @@ const submitMission = async () => {
           </button>
 
           <button
-            className="mt-6 px-4 py-2 rounded-xl bg-black text-white"
+            className="mt-6 px-4 py-3 rounded-xl bg-black text-white w-full"
             onClick={() => {
               localStorage.removeItem("user");
               setScreen("login");
             }}
           >
             Cerrar sesión
+          </button>
+        </div>
+
+        <div className="mt-4">
+          <button
+            className="w-full px-4 py-3 rounded-2xl border border-zinc-200 bg-white/70 backdrop-blur-xl"
+            onClick={() => setScreen("admin")}
+          >
+            Administrador
           </button>
         </div>
       </Layout>
@@ -1979,9 +2071,28 @@ function DashboardRoadmap({
             <h1 className="text-4xl sm:text-5xl font-semibold tracking-tight mt-2">
               {user}
             </h1>
-            <p className="mt-2 text-zinc-500 font-medium">
-              Nivel {current.level} • {current.title}
-            </p>
+            <div className="mt-3 flex items-center gap-3 flex-wrap">
+              <span className="text-zinc-500 font-medium">
+                Nivel {current.level} • {current.title}
+              </span>
+
+              {next && (
+                <div className="flex items-center gap-2">
+                  <div className="w-20 h-1.5 bg-zinc-200 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-black rounded-full"
+                      style={{
+                        width: `${Math.min(levelProgress, 100)}%`,
+                      }}
+                    />
+                  </div>
+
+                  <span className="text-xs text-zinc-500 font-medium">
+                    {totalXp} XP
+                  </span>
+                </div>
+              )}
+            </div>
           </div>
 
           <button
@@ -2010,25 +2121,6 @@ function DashboardRoadmap({
             <div
               className="h-full rounded-full bg-black transition-all"
               style={{ width: `${progress}%` }}
-            />
-          </div>
-        </div>
-        <div className="mt-4 bg-white/70 backdrop-blur-xl rounded-3xl p-6 border border-white/50 shadow-sm">
-          <div className="flex justify-between items-center mb-3">
-            <span className="text-zinc-600">Experiencia</span>
-            <span className="font-semibold">{totalXp} XP</span>
-          </div>
-
-          <p className="text-sm text-zinc-500 mb-3">
-            {next
-              ? `${totalXp - current.xp} / ${next.xp - current.xp} XP para Nivel ${next.level}`
-              : 'Nivel máximo'}
-          </p>
-
-          <div className="h-3 rounded-full bg-zinc-200 overflow-hidden">
-            <div
-              className="h-full rounded-full bg-black transition-all"
-              style={{ width: `${Math.min(levelProgress, 100)}%` }}
             />
           </div>
         </div>
