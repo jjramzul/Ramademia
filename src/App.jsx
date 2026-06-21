@@ -11,6 +11,8 @@ import {
   Trash2,
   Eye,
   EyeOff,
+  Lock,
+  LogOut,
 } from "lucide-react";
 import {
   collection,
@@ -1928,13 +1930,27 @@ function DashboardRoadmap({
   return (
     <div>
       <div className="mb-10">
-        <p className="text-zinc-500 text-sm">
-          Bienvenido
-        </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-zinc-500 text-sm">
+              Bienvenido
+            </p>
 
-        <h1 className="text-4xl sm:text-5xl font-semibold tracking-tight mt-2">
-          {user}
-        </h1>
+            <h1 className="text-4xl sm:text-5xl font-semibold tracking-tight mt-2">
+              {user}
+            </h1>
+          </div>
+
+          <button
+            onClick={() => {
+              localStorage.removeItem("user");
+              window.location.reload();
+            }}
+            className="p-3 rounded-2xl bg-white/70 backdrop-blur-xl border border-zinc-200 hover:shadow-md transition"
+          >
+            <LogOut size={22} />
+          </button>
+        </div>
 
         <div className="mt-8 bg-white/70 backdrop-blur-xl rounded-3xl p-6 border border-white/50 shadow-sm">
           <div className="flex justify-between items-center mb-3">
@@ -2087,24 +2103,32 @@ function DayCard({
         <div className="w-px h-12 sm:h-16 bg-zinc-200 mt-2" />
       </div>
 
-      <div className="flex-1 pb-8">
-        <h3 className="text-xl sm:text-2xl font-semibold tracking-tight">
-          {title}
-        </h3>
+      <div className="flex-1 pb-8 flex items-center justify-between gap-4">
+        <div>
+          <h3 className="text-xl sm:text-2xl font-semibold tracking-tight">
+            {title}
+          </h3>
 
-        <p className="mt-1 text-zinc-500">
-          {description}
-        </p>
+          <p className="mt-1 text-zinc-500">
+            {description}
+          </p>
 
-        <div className="mt-3 flex flex-wrap gap-3 sm:gap-4 text-sm text-zinc-500">
-          <span>
-            {completedCount}/{totalCount} misiones
-          </span>
+          <div className="mt-3 flex flex-wrap gap-3 sm:gap-4 text-sm text-zinc-500">
+            <span>
+              {completedCount}/{totalCount} misiones
+            </span>
 
-          <span>
-            {totalPoints} pts
-          </span>
+            <span>
+              {totalPoints} pts
+            </span>
+          </div>
         </div>
+
+        {status === "locked" && (
+          <div className="flex items-center justify-center pr-2">
+            <Lock size={34} className="text-zinc-400" />
+          </div>
+        )}
       </div>
     </div>
   );
