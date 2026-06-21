@@ -750,17 +750,16 @@ const normalizeVideoUrl = (url) => {
         .map((doc) => doc.data())
         .filter((s) => s.status === "approved");
 
-      const totals = {
-        "Simón": 0,
-        "Tomás": 0,
-      };
+      const totals = {};
 
       approvedSubmissions.forEach((submission) => {
-        if (totals[submission.userName] !== undefined) {
-          totals[submission.userName] += Number(
-            submission.xp || submission.points || 10
-          );
+        if (!totals[submission.userName]) {
+          totals[submission.userName] = 0;
         }
+
+        totals[submission.userName] += Number(
+          submission.xp || submission.points || 10
+        );
       });
 
       setScores(totals);
@@ -1339,7 +1338,7 @@ const submitMission = async () => {
 
                 <button
                   type="button"
-                  className="px-5 py-3 rounded-2xl bg-zinc-100 hover:bg-zinc-200 transition"
+                  className="w-full px-5 py-3 rounded-2xl bg-zinc-100 hover:bg-zinc-200 transition"
                   onClick={() => {
                     document
                       .getElementById("mission-file")
@@ -2032,7 +2031,11 @@ const submitMission = async () => {
             className="w-full p-3 rounded-xl border border-zinc-200 mb-6"
           />
 
-          {["Simón", "Tomás", "Juan"]
+          {[
+            ...new Set(
+              allSubmissions.map((s) => s.userName)
+            ),
+          ]
             .filter((userName) =>
               userName.toLowerCase().includes(
                 submissionSearch.toLowerCase()
