@@ -13,6 +13,10 @@ import {
   EyeOff,
   Lock,
   LogOut,
+  ArrowUp,
+  ArrowDown,
+  RotateCcw,
+  Plus,
 } from "lucide-react";
 import {
   collection,
@@ -594,6 +598,48 @@ const normalizeVideoUrl = (url) => {
     if (!confirmed) return;
 
     await deleteDoc(doc(db, "missions", missionId));
+
+    await loadAllMissions();
+  };
+
+  const moveMissionUp = async (mission) => {
+    const dayMissions = allMissions
+      .filter((m) => m.dayId === mission.dayId)
+      .sort((a, b) => (a.order || 0) - (b.order || 0));
+
+    const index = dayMissions.findIndex((m) => m.id === mission.id);
+    if (index <= 0) return;
+
+    const previous = dayMissions[index - 1];
+
+    await updateDoc(doc(db, "missions", mission.id), {
+      order: previous.order,
+    });
+
+    await updateDoc(doc(db, "missions", previous.id), {
+      order: mission.order,
+    });
+
+    await loadAllMissions();
+  };
+
+  const moveMissionDown = async (mission) => {
+    const dayMissions = allMissions
+      .filter((m) => m.dayId === mission.dayId)
+      .sort((a, b) => (a.order || 0) - (b.order || 0));
+
+    const index = dayMissions.findIndex((m) => m.id === mission.id);
+    if (index === -1 || index >= dayMissions.length - 1) return;
+
+    const next = dayMissions[index + 1];
+
+    await updateDoc(doc(db, "missions", mission.id), {
+      order: next.order,
+    });
+
+    await updateDoc(doc(db, "missions", next.id), {
+      order: mission.order,
+    });
 
     await loadAllMissions();
   };
@@ -1631,6 +1677,9 @@ const submitMission = async () => {
               const dayMissions = allMissions.filter(
                 (mission) => mission.dayId === day.id
               );
+              const sortedDayMissions = [...dayMissions].sort(
+                (a, b) => (a.order || 0) - (b.order || 0)
+              );
 
               return (
                 <div
@@ -1648,9 +1697,22 @@ const submitMission = async () => {
                       </p>
                     </div>
 
-                    <span>
-                      {expandedDays[day.id] ? "▲" : "▼"}
-                    </span>
+                    <div className="flex items-center gap-3">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setNewMissionDayId(day.id);
+                          window.scrollTo({ top: 0, behavior: "smooth" });
+                        }}
+                        className="p-2 rounded-lg border border-zinc-200 bg-white"
+                      >
+                        <Plus size={16} />
+                      </button>
+
+                      <span>
+                        {expandedDays[day.id] ? "▲" : "▼"}
+                      </span>
+                    </div>
                   </button>
 
                   {expandedDays[day.id] && (
@@ -1660,7 +1722,7 @@ const submitMission = async () => {
                           Sin misiones.
                         </p>
                       ) : (
-                        dayMissions.map((mission) => (
+                        sortedDayMissions.map((mission) => (
                           <div
                             key={mission.id}
                             className="border border-zinc-200 rounded-xl p-4 flex justify-between items-center"
@@ -1678,6 +1740,18 @@ const submitMission = async () => {
                             <div className="flex gap-2">
                               <button
                                 className="px-3 py-2 border rounded-xl"
+                                onClick={() => moveMissionUp(mission)}
+                              >
+                                <ArrowUp size={16} />
+                              </button>
+                              <button
+                                className="px-3 py-2 border rounded-xl"
+                                onClick={() => moveMissionDown(mission)}
+                              >
+                                <ArrowDown size={16} />
+                              </button>
+                              <button
+                                className="px-3 py-2 border rounded-xl"
                                 onClick={() => editMission(mission)}
                               >
                                 <Pencil size={16} />
@@ -1687,7 +1761,7 @@ const submitMission = async () => {
                                 onClick={() => resetMissionProgress(mission)}
                                 title="Reiniciar progreso"
                               >
-                                🔄
+                                <RotateCcw size={16} />
                               </button>
                               <button
                                 className="px-3 py-2 border rounded-xl"
