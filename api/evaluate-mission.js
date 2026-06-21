@@ -127,7 +127,7 @@ Devuelve ÚNICAMENTE un JSON válido. No uses markdown, no uses bloques de códi
     });
     }
 
-    const response = await fetch(
+    const openRouterResponse = await fetch(
     "https://openrouter.ai/api/v1/chat/completions",
     {
         method: "POST",
@@ -143,7 +143,16 @@ Devuelve ÚNICAMENTE un JSON válido. No uses markdown, no uses bloques de códi
     }
     );
 
-    const data = await response.json();
+    const data = await openRouterResponse.json();
+
+    if (!openRouterResponse.ok) {
+      console.error("OPENROUTER ERROR:", data);
+      throw new Error(
+        data?.error?.message ||
+        data?.error ||
+        `OpenRouter error ${openRouterResponse.status}`
+      );
+    }
 
     console.log(
     "OPENROUTER RESPONSE:",
