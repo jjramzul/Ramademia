@@ -116,6 +116,11 @@ Devuelve ÚNICAMENTE un JSON válido. No uses markdown, no uses bloques de códi
     console.log("GEMINI RESPONSE RECEIVED");
 
     const text = result.text.trim();
+    console.log("RAW GEMINI:");
+    console.log(JSON.stringify(result, null, 2));
+
+    console.log("TEXT:");
+    console.log(text);
 
     let evaluation;
 
@@ -134,6 +139,8 @@ Devuelve ÚNICAMENTE un JSON válido. No uses markdown, no uses bloques de códi
       });
     }
 
+    console.log("FINAL EVALUATION:");
+    console.log(JSON.stringify(evaluation, null, 2));
     res.json({
       approved: Boolean(evaluation.approved),
       feedback: evaluation.feedback || "Sin retroalimentación",
