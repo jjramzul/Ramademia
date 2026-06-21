@@ -854,13 +854,11 @@ const submitMission = async () => {
         );
       }
 
+      setSubmissionSent(true);
+
       if (evaluation.approved) {
         launchConfetti();
-
-        setSubmissionSent(true);
         loadScores();
-      } else {
-        setSubmissionSent(false);
       }
     } catch (error) {
       console.error(error);
