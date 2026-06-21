@@ -1,9 +1,9 @@
-import { GoogleGenAI } from "@google/genai";
+import Groq from "groq-sdk";
 import axios from "axios";
 import mammoth from "mammoth";
 
-const ai = new GoogleGenAI({
-  apiKey: process.env.GEMINI_API_KEY,
+const groq = new Groq({
+  apiKey: process.env.GROQ_API_KEY,
 });
 
 export default async function handler(req, res) {
@@ -96,7 +96,7 @@ CRITERIOS:
 5. No rechaces por ortografía.
 6. Si existe contenido extraído de un archivo, evalúalo junto con la respuesta.
 7. El archivo adjunto puede contener evidencia o parte de la solución.
-8. Si existe una imagen adjunta, analízala y úsala para evaluar la misión.
+8. Si existe un archivo adjunto, úsalo como evidencia adicional cuando sea posible.
 
 Devuelve ÚNICAMENTE un JSON válido. No uses markdown, no uses bloques de código, no agregues texto antes o después del JSON.
 
@@ -106,21 +106,9 @@ Devuelve ÚNICAMENTE un JSON válido. No uses markdown, no uses bloques de códi
 }
 `;
 
-    console.log("ABOUT TO CALL GEMINI");
-    const result = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: imagePart
-        ? [prompt, imagePart]
-        : prompt,
-    });
-    console.log("GEMINI RESPONSE RECEIVED");
+    console.log("ABOUT TO CALL GROQ");
 
-    const text = result.text.trim();
-    console.log("RAW GEMINI:");
-    console.log(JSON.stringify(result, null, 2));
 
-    console.log("TEXT:");
-    console.log(text);
 
     let evaluation;
 
