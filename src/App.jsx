@@ -861,21 +861,26 @@ const normalizeVideoUrl = (url) => {
         sessionSnap.exists() &&
         sessionSnap.data().startedAt
       ) {
-        const startedAt =
-          sessionSnap.data().startedAt.toDate();
+        if (sessionSnap.data().expired) {
+          setTimeLeft(0);
+          setMissionStarted(true);
+        } else {
+          const startedAt =
+            sessionSnap.data().startedAt.toDate();
 
-        const elapsedSeconds = Math.floor(
-          (Date.now() - startedAt.getTime()) / 1000
-        );
+          const elapsedSeconds = Math.floor(
+            (Date.now() - startedAt.getTime()) / 1000
+          );
 
-        const remainingSeconds = Math.max(
-          0,
-          (mission.estimatedMinutes || 0) * 60 -
-            elapsedSeconds
-        );
+          const remainingSeconds = Math.max(
+            0,
+            (mission.estimatedMinutes || 0) * 60 -
+              elapsedSeconds
+          );
 
-        setTimeLeft(remainingSeconds);
-        setMissionStarted(true);
+          setTimeLeft(remainingSeconds);
+          setMissionStarted(true);
+        }
       } else {
         await setDoc(
           doc(
@@ -966,8 +971,20 @@ const submitMission = async () => {
 
       const evaluation = await evaluationResponse.json();
 
-      setFeedback(evaluation.feedback || "");
-      setApproved(evaluation.approved);
+      if (!evaluationResponse.ok) {
+        console.error("ERROR EVALUANDO:", evaluation);
+
+        throw new Error(
+          evaluation?.error ||
+          evaluation?.message ||
+          "Error evaluando misión"
+        );
+      }
+
+      const missionApproved = Boolean(evaluation?.approved);
+
+      setFeedback(evaluation?.feedback || "");
+      setApproved(missionApproved);
 
       await addDoc(collection(db, "submissions"), {
         userName: user,
@@ -978,7 +995,7 @@ const submitMission = async () => {
         fileName: attachedFile ? attachedFile.name : null,
         fileSize: attachedFile ? attachedFile.size : null,
         fileUrl,
-        status: evaluation.approved ? "approved" : "rejected",
+        status: missionApproved ? "approved" : "rejected",
         feedback: evaluation.feedback || "",
         createdAt: serverTimestamp(),
       });
@@ -987,7 +1004,7 @@ const submitMission = async () => {
         await setDoc(
           doc(db, "mission_sessions", sessionId),
           {
-            completed: evaluation.approved,
+            completed: missionApproved,
           },
           { merge: true }
         );
@@ -995,7 +1012,7 @@ const submitMission = async () => {
 
       setSubmissionSent(true);
 
-      if (evaluation.approved) {
+      if (missionApproved) {
         launchConfetti();
         await loadScores();
         await loadCompletedMissions(user);
@@ -1345,7 +1362,38 @@ const submitMission = async () => {
                     <button
                       className="flex-1 bg-black text-white py-3 rounded-xl"
                       onClick={async () => {
-                        await loadCompletedMissions(user);
+                        if (missionExpired && !approved) {
+                          const existing = submissions.find(
+                            (s) =>
+                              s.missionId === selectedMission.id &&
+                              (s.status === "approved" || s.status === "expired")
+                          );
+
+                          if (!existing) {
+                            await addDoc(collection(db, "submissions"), {
+                              userName: user,
+                              missionId: selectedMission.id,
+                              missionTitle: selectedMission.title,
+                              xp: 0,
+                              responseText: "",
+                              status: "expired",
+                              feedback: "Tiempo agotado",
+                              createdAt: serverTimestamp(),
+                            });
+
+                            if (sessionId) {
+                              await setDoc(
+                                doc(db, "mission_sessions", sessionId),
+                                { expired: true },
+                                { merge: true }
+                              );
+                            }
+                          }
+
+                          await loadCompletedMissions(user);
+                          await loadUserSubmissions(user);
+                        }
+
                         openMission(nextMissionInDay);
                       }}
                     >
@@ -1367,6 +1415,10 @@ const submitMission = async () => {
     const nextMission = dayMissions.find(
       (m) => !completedMissions.includes(m.id)
     );
+
+    const expiredMissionIds = submissions
+      .filter((s) => s.status === "expired")
+      .map((s) => s.missionId);
 
     return (
       <Layout
@@ -1440,11 +1492,16 @@ const submitMission = async () => {
                       <span className="font-medium">
                         {mission.title}
                       </span>
-
-                      <span className="text-emerald-600 text-sm flex items-center gap-1">
-                        <CheckCircle2 size={14} />
-                        Completada
-                      </span>
+                      {expiredMissionIds.includes(mission.id) ? (
+                        <span className="text-amber-600 text-sm">
+                          ⏰ Tiempo agotado
+                        </span>
+                      ) : (
+                        <span className="text-emerald-600 text-sm flex items-center gap-1">
+                          <CheckCircle2 size={14} />
+                          Completada
+                        </span>
+                      )}
                     </div>
                   </button>
                 ))}
