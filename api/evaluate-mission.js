@@ -1,6 +1,5 @@
 import { GoogleGenAI } from "@google/genai";
 import axios from "axios";
-import * as pdf from "pdf-parse";
 import mammoth from "mammoth";
 
 const ai = new GoogleGenAI({
@@ -32,10 +31,7 @@ export default async function handler(req, res) {
         const buffer = Buffer.from(fileResponse.data);
         const lowerFileName = fileName.toLowerCase();
 
-        if (lowerFileName.endsWith(".pdf")) {
-          const parsedPdf = await pdf(buffer);
-          fileContent = parsedPdf.text;
-        } else if (lowerFileName.endsWith(".docx")) {
+        if (lowerFileName.endsWith(".docx")) {
           const parsedDocx = await mammoth.extractRawText({
             buffer,
           });
