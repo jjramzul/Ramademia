@@ -679,6 +679,8 @@ const normalizeVideoUrl = (url) => {
 
 const openMission = async (mission) => {
   setSelectedMission(mission);
+  const missionSessionId = `${user}_${mission.id}`;
+  setSessionId(missionSessionId);
 
   const previousSubmission = submissions.find(
     (s) => s.missionId === mission.id && s.status === "approved"
@@ -704,10 +706,6 @@ const openMission = async (mission) => {
   setIsMissionCompleted(
     completedMissions.includes(mission.id)
   );
-
-  const missionSessionId = `${user}_${mission.id}`;
-
-  setSessionId(missionSessionId);
 
   setVideoProgress(0);
 
@@ -753,11 +751,26 @@ const openMission = async (mission) => {
       setTimeLeft(remainingSeconds);
       setMissionStarted(true);
     } else {
+      await setDoc(
+        doc(
+          db,
+          "mission_sessions",
+          missionSessionId
+        ),
+        {
+          userName: user,
+          missionId: mission.id,
+          startedAt: serverTimestamp(),
+          completed: false,
+        },
+        { merge: true }
+      );
+
       setTimeLeft(
         (mission.estimatedMinutes || 0) * 60
       );
 
-      setMissionStarted(false);
+      setMissionStarted(true);
       setVideoCompleted(false);
     }
   } catch (error) {
@@ -966,34 +979,7 @@ const submitMission = async () => {
               </span>
             </div>
           </div>
-          <div className="mt-4">
-            <button
-              className="px-4 py-2 bg-black text-white rounded-xl disabled:opacity-60"
-              onClick={async () => {
-                if (missionStarted) return;
 
-                await setDoc(
-                  doc(
-                    db,
-                    "mission_sessions",
-                    `${user}_${selectedMission.id}`
-                  ),
-                  {
-                    userName: user,
-                    missionId: selectedMission.id,
-                    startedAt: serverTimestamp(),
-                    completed: false,
-                  },
-                  { merge: true }
-                );
-
-                setMissionStarted(true);
-              }}
-              disabled={missionStarted}
-            >
-              {missionStarted ? "Misión iniciada" : "Iniciar misión"}
-            </button>
-          </div>
 
           <div className="mt-10 bg-white/70 backdrop-blur-xl rounded-[32px] p-8 border border-white/50 max-w-4xl mx-auto transition-all duration-300 hover:shadow-2xl hover:-translate-y-1">
             {selectedMission?.type === "video" && (
@@ -1289,9 +1275,7 @@ const submitMission = async () => {
               {nextMission.title}
             </h2>
 
-            <p className="mt-4 text-zinc-500">
-              {nextMission.description}
-            </p>
+
 
             <div className="mt-5 flex flex-wrap gap-3 sm:gap-5 text-sm text-zinc-500">
               <span>{nextMission.estimatedMinutes} min</span>
