@@ -38,6 +38,35 @@ import {
 import { seedDatabase } from "./seed";
 import confetti from "canvas-confetti";
 
+function getMissionXp(mission) {
+  return Number(mission?.xp ?? ((mission?.points || 1) * 10));
+}
+
+function getLevelInfo(xp) {
+  const levels = [
+    { level: 1, title: "Aprendiz IA", xp: 0 },
+    { level: 2, title: "Explorador IA", xp: 50 },
+    { level: 3, title: "Investigador IA", xp: 100 },
+    { level: 4, title: "Constructor IA", xp: 200 },
+    { level: 5, title: "Automatizador", xp: 350 },
+    { level: 6, title: "Arquitecto IA", xp: 550 },
+    { level: 7, title: "Maestro IA", xp: 800 },
+    { level: 8, title: "Leyenda IA", xp: 1200 },
+  ];
+
+  let current = levels[0];
+  let next = null;
+
+  for (let i = 0; i < levels.length; i++) {
+    if (xp >= levels[i].xp) {
+      current = levels[i];
+      next = levels[i + 1] || null;
+    }
+  }
+
+  return { current, next };
+}
+
 export default function App() {
   const [screen, setScreen] = useState("login");
   const [user, setUser] = useState("");
@@ -503,7 +532,7 @@ const normalizeVideoUrl = (url) => {
             description: newMissionDescription,
             dayId: newMissionDayId,
             estimatedMinutes: Number(newMissionMinutes),
-            points: Number(newMissionPoints),
+            xp: Number(newMissionPoints),
             type: newMissionType,
             videoUrl: normalizeVideoUrl(newMissionVideoUrl),
             requiredVideoPercent: Number(newMissionVideoPercent || 80),
@@ -515,7 +544,7 @@ const normalizeVideoUrl = (url) => {
           description: newMissionDescription,
           dayId: newMissionDayId,
           estimatedMinutes: Number(newMissionMinutes),
-          points: Number(newMissionPoints),
+          xp: Number(newMissionPoints),
           type: newMissionType,
           videoUrl: normalizeVideoUrl(newMissionVideoUrl),
           requiredVideoPercent: Number(newMissionVideoPercent || 80),
@@ -547,7 +576,7 @@ const normalizeVideoUrl = (url) => {
     setNewMissionDescription(mission.description || "");
     setNewMissionDayId(mission.dayId || "");
     setNewMissionMinutes(mission.estimatedMinutes || 15);
-    setNewMissionPoints(mission.points || 1);
+    setNewMissionPoints(mission.xp || mission.points || 10);
     setNewMissionType(mission.type || "text");
     setNewMissionVideoUrl(mission.videoUrl || "");
     setNewMissionVideoPercent(
@@ -612,7 +641,7 @@ const normalizeVideoUrl = (url) => {
       approvedSubmissions.forEach((submission) => {
         if (totals[submission.userName] !== undefined) {
           totals[submission.userName] += Number(
-            submission.points || 1
+            submission.xp || submission.points || 10
           );
         }
       });
@@ -849,7 +878,7 @@ const submitMission = async () => {
         userName: user,
         missionId: selectedMission.id,
         missionTitle: selectedMission.title,
-        points: selectedMission.points || 1,
+        xp: getMissionXp(selectedMission),
         responseText: missionResponse,
         fileName: attachedFile ? attachedFile.name : null,
         fileSize: attachedFile ? attachedFile.size : null,
@@ -899,7 +928,7 @@ const submitMission = async () => {
 
       if (!foundUser) {
         setLoading(false);
-        alert("Contraseña incorrecta");
+        alert("Usuario o contraseña incorrecta");
         return;
       }
 
@@ -967,7 +996,7 @@ const submitMission = async () => {
 
               <span className="flex items-center gap-2 font-medium">
                 <Award size={16} />
-                {selectedMission?.points || 1} pts
+                {getMissionXp(selectedMission)} XP
               </span>
 
               <span className="text-zinc-300">•</span>
@@ -1281,7 +1310,7 @@ const submitMission = async () => {
 
             <div className="mt-5 flex flex-wrap gap-3 sm:gap-5 text-sm text-zinc-500">
               <span>{nextMission.estimatedMinutes} min</span>
-              <span>{nextMission.points || 1} pts</span>
+              <span>{getMissionXp(nextMission)} XP</span>
             </div>
 
             <button
@@ -1350,7 +1379,7 @@ const submitMission = async () => {
               className="w-full mt-4 bg-black text-white py-3 rounded-xl"
               onClick={() => {
                 if (adminPassword !== "ramiadmin") {
-                  alert("Contraseña incorrecta");
+                  alert("Usuario o contraseña incorrecta");
                 }
               }}
             >
@@ -1558,7 +1587,7 @@ const submitMission = async () => {
                               </p>
 
                               <p className="text-sm text-zinc-500">
-                                {mission.estimatedMinutes} min · {mission.points} pts
+                                {mission.estimatedMinutes} min · {getMissionXp(mission)} XP
                               </p>
                             </div>
 
@@ -1804,19 +1833,19 @@ const submitMission = async () => {
 
           <button
             className="mt-4 px-4 py-2 rounded-xl border border-zinc-200 w-full"
+            onClick={() => setScreen("admin")}
+          >
+            Administrador
+          </button>
+
+          <button
+            className="mt-4 px-4 py-2 rounded-xl border border-zinc-200 w-full"
             onClick={async () => {
               await loadUserSubmissions();
               setScreen("submissions");
             }}
           >
             Mis entregas
-          </button>
-
-          <button
-            className="mt-4 px-4 py-2 rounded-xl border border-zinc-200 w-full"
-            onClick={() => setScreen("admin")}
-          >
-            Administrador
           </button>
 
           <button
@@ -1893,6 +1922,7 @@ const submitMission = async () => {
     );
   }
 
+
   return (
     <Layout
       user={user}
@@ -1927,6 +1957,16 @@ function DashboardRoadmap({
     ? Math.round((completedCount / totalMissions) * 100)
     : 0;
 
+  const totalXp = allMissions
+    .filter((m) => completedMissionIds.includes(m.id))
+    .reduce((sum, m) => sum + getMissionXp(m), 0);
+
+  const { current, next } = getLevelInfo(totalXp);
+
+  const levelProgress = next
+    ? ((totalXp - current.xp) / (next.xp - current.xp)) * 100
+    : 100;
+
   return (
     <div>
       <div className="mb-10">
@@ -1939,6 +1979,9 @@ function DashboardRoadmap({
             <h1 className="text-4xl sm:text-5xl font-semibold tracking-tight mt-2">
               {user}
             </h1>
+            <p className="mt-2 text-zinc-500 font-medium">
+              Nivel {current.level} • {current.title}
+            </p>
           </div>
 
           <button
@@ -1967,6 +2010,25 @@ function DashboardRoadmap({
             <div
               className="h-full rounded-full bg-black transition-all"
               style={{ width: `${progress}%` }}
+            />
+          </div>
+        </div>
+        <div className="mt-4 bg-white/70 backdrop-blur-xl rounded-3xl p-6 border border-white/50 shadow-sm">
+          <div className="flex justify-between items-center mb-3">
+            <span className="text-zinc-600">Experiencia</span>
+            <span className="font-semibold">{totalXp} XP</span>
+          </div>
+
+          <p className="text-sm text-zinc-500 mb-3">
+            {next
+              ? `${totalXp - current.xp} / ${next.xp - current.xp} XP para Nivel ${next.level}`
+              : 'Nivel máximo'}
+          </p>
+
+          <div className="h-3 rounded-full bg-zinc-200 overflow-hidden">
+            <div
+              className="h-full rounded-full bg-black transition-all"
+              style={{ width: `${Math.min(levelProgress, 100)}%` }}
             />
           </div>
         </div>
@@ -2075,7 +2137,7 @@ function DayCard({
   ).length;
 
   const totalPoints = dayMissions.reduce(
-    (sum, mission) => sum + Number(mission.points || 1),
+    (sum, mission) => sum + getMissionXp(mission),
     0
   );
 
@@ -2084,8 +2146,8 @@ function DayCard({
 
   return (
     <div
-      onClick={status === "available" ? onClick : undefined}
-      className={`group flex items-start gap-4 sm:gap-5 ${status === "available" ? "cursor-pointer" : "opacity-70"}`}
+      onClick={onClick}
+      className={`group flex items-start gap-4 sm:gap-5 ${status === "available" ? "cursor-pointer" : "cursor-pointer opacity-70"}`}
     >
       <div className="flex flex-col items-center">
         <div
@@ -2119,7 +2181,7 @@ function DayCard({
             </span>
 
             <span>
-              {totalPoints} pts
+              {totalPoints} XP
             </span>
           </div>
         </div>
@@ -2141,7 +2203,7 @@ function ScoreCard({
   return (
     <div className="bg-white rounded-3xl p-6 border border-zinc-200 flex justify-between">
       <span>{name}</span>
-      <span>{points} pts</span>
+      <span>{points} XP</span>
     </div>
   );
 }
