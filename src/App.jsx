@@ -952,39 +952,44 @@ const submitMission = async () => {
         fileUrl = await getDownloadURL(storageRef);
       }
 
-      const evaluationResponse = await fetch(
-        "/api/evaluate-mission",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            title: selectedMission.title,
-            description: selectedMission.description,
-            response: missionResponse,
-            fileUrl,
-            fileName: attachedFile?.name || null,
-          }),
-        }
-      );
+      // --- Begin new evaluation logic ---
+      const normalizedResponse = missionResponse.trim();
 
-      const evaluation = await evaluationResponse.json();
+      const hasFile = Boolean(fileUrl);
 
-      if (!evaluationResponse.ok) {
-        console.error("ERROR EVALUANDO:", evaluation);
+      const wordCount = normalizedResponse
+        .split(/\s+/)
+        .filter(Boolean).length;
 
-        throw new Error(
-          evaluation?.error ||
-          evaluation?.message ||
-          "Error evaluando misión"
-        );
-      }
+      const hasReasonableAnswer = wordCount >= 8;
 
-      const missionApproved = Boolean(evaluation?.approved);
+      const isVideoMission = selectedMission?.type === "video";
+
+      const missionApproved = isVideoMission
+        ? videoCompleted && (hasFile || hasReasonableAnswer)
+        : hasFile || hasReasonableAnswer;
+
+      const evaluation = {
+        approved: missionApproved,
+        feedback: missionApproved
+          ? isVideoMission
+            ? "Video completado y evidencia recibida correctamente."
+            : hasFile
+            ? "Evidencia recibida correctamente."
+            : "Respuesta recibida correctamente."
+          : isVideoMission
+          ? "Debes completar el video y enviar una respuesta o evidencia."
+          : "Debes enviar una respuesta o evidencia suficiente.",
+      };
+      // --- End new evaluation logic ---
 
       setFeedback(evaluation?.feedback || "");
       setApproved(missionApproved);
+
+      // New: If not approved, mark submission as sent (show feedback)
+      if (!missionApproved) {
+        setSubmissionSent(true);
+      }
 
       await addDoc(collection(db, "submissions"), {
         userName: user,
@@ -1010,9 +1015,8 @@ const submitMission = async () => {
         );
       }
 
-      setSubmissionSent(true);
-
       if (missionApproved) {
+        setSubmissionSent(true);
         launchConfetti();
         await loadScores();
         await loadCompletedMissions(user);
