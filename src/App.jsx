@@ -122,6 +122,7 @@ const [allSubmissions, setAllSubmissions] = useState([]);
 const [submissionSearch, setSubmissionSearch] = useState("");
 const [expandedUsers, setExpandedUsers] = useState({});
 const [expandedDays, setExpandedDays] = useState({});
+const [adminFeedbacks, setAdminFeedbacks] = useState({});
   const launchConfetti = () => {
     const end = Date.now() + 2000;
 
@@ -691,20 +692,46 @@ const normalizeVideoUrl = (url) => {
     approved
   ) => {
     try {
+      // Find the submission in allSubmissions
+      const submission = allSubmissions.find(
+        (s) => s.id === submissionId
+      );
+
       await updateDoc(
         doc(db, "submissions", submissionId),
         {
           status: approved
             ? "approved"
             : "rejected",
-          feedback: approved
-            ? "Aprobada manualmente por administrador"
-            : "Rechazada manualmente por administrador",
+          feedback:
+            adminFeedbacks[submissionId]?.trim() ||
+            (approved
+              ? "Aprobada manualmente por administrador"
+              : "Rechazada manualmente por administrador"),
         }
       );
 
+      // Update mission_sessions if possible
+      if (submission?.userName && submission?.missionId) {
+        const sessionId = `${submission.userName}_${submission.missionId}`;
+
+        await setDoc(
+          doc(db, "mission_sessions", sessionId),
+          {
+            completed: approved,
+            expired: false,
+          },
+          { merge: true }
+        );
+      }
+
       await loadAllSubmissions();
       await loadScores();
+
+      // Reload completed missions for user if possible
+      if (submission?.userName) {
+        await loadCompletedMissions(submission.userName);
+      }
     } catch (error) {
       console.error(error);
       alert("Error actualizando entrega");
@@ -932,8 +959,8 @@ const submitMission = async () => {
       return;
     }
 
-    if (!missionResponse.trim()) {
-      alert("Escribe una respuesta primero");
+    if (!missionResponse.trim() && !attachedFile) {
+      alert("Debes escribir una respuesta o adjuntar evidencia");
       return;
     }
 
@@ -989,6 +1016,16 @@ const submitMission = async () => {
       // New: If not approved, mark submission as sent (show feedback)
       if (!missionApproved) {
         setSubmissionSent(true);
+      }
+
+      const existingSubmission = submissions.find(
+        (s) => s.missionId === selectedMission.id
+      );
+
+      if (existingSubmission) {
+        alert("Ya existe una entrega para esta misión.");
+        setSendingSubmission(false);
+        return;
       }
 
       await addDoc(collection(db, "submissions"), {
@@ -1981,9 +2018,22 @@ const submitMission = async () => {
                           </p>
 
                           {submission.fileName && (
-                            <p className="text-sm text-zinc-500 mt-1">
-                              📎 {submission.fileName}
-                            </p>
+                            <div className="mt-2">
+                              <p className="text-sm text-zinc-500">
+                                📎 {submission.fileName}
+                              </p>
+                              {submission.fileUrl && (
+                                <a
+                                  href={submission.fileUrl}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="inline-flex items-center gap-2 mt-2 px-3 py-2 rounded-xl border border-zinc-200 hover:bg-zinc-50 text-sm"
+                                >
+                                  <Eye size={16} />
+                                  Ver evidencia
+                                </a>
+                              )}
+                            </div>
                           )}
 
                           {submission.feedback && (
@@ -1991,6 +2041,29 @@ const submitMission = async () => {
                               {submission.feedback}
                             </p>
                           )}
+                          {submission.responseText && (
+                            <div className="mt-3 p-3 rounded-xl bg-zinc-50 border border-zinc-200">
+                              <p className="text-xs text-zinc-500 mb-1">
+                                Respuesta del estudiante
+                              </p>
+
+                              <p className="text-sm whitespace-pre-wrap">
+                                {submission.responseText}
+                              </p>
+                            </div>
+                          )}
+                          <textarea
+                            placeholder="Feedback opcional para el estudiante..."
+                            value={adminFeedbacks[submission.id] || ""}
+                            onChange={(e) =>
+                              setAdminFeedbacks((prev) => ({
+                                ...prev,
+                                [submission.id]: e.target.value,
+                              }))
+                            }
+                            className="w-full mt-3 p-3 rounded-xl border border-zinc-200 text-sm"
+                            rows={3}
+                          />
                           <div className="flex gap-2 mt-3">
                             <button
                               className="px-3 py-2 rounded-xl bg-emerald-100 text-emerald-700 text-sm"
@@ -2099,6 +2172,28 @@ const submitMission = async () => {
                 <p className="mt-3 text-sm text-zinc-600">
                   {submission.feedback}
                 </p>
+              )}
+              {submission.responseText && (
+                <div className="mt-3 p-3 rounded-xl bg-zinc-50 border border-zinc-200">
+                  <p className="text-xs text-zinc-500 mb-1">
+                    Tu respuesta
+                  </p>
+
+                  <p className="text-sm whitespace-pre-wrap">
+                    {submission.responseText}
+                  </p>
+                </div>
+              )}
+              {submission.fileName && submission.fileUrl && (
+                <a
+                  href={submission.fileUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="mt-3 inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-zinc-200 hover:bg-zinc-50 text-sm"
+                >
+                  <Eye size={16} />
+                  Ver archivo enviado
+                </a>
               )}
             </div>
           ))}
@@ -2501,4 +2596,4 @@ function ScoreCard({
       <span>{points} XP</span>
     </div>
   );
-}
+} 
