@@ -123,6 +123,8 @@ const [submissionSearch, setSubmissionSearch] = useState("");
 const [expandedUsers, setExpandedUsers] = useState({});
 const [expandedDays, setExpandedDays] = useState({});
 const [adminFeedbacks, setAdminFeedbacks] = useState({});
+const [newUserName, setNewUserName] = useState("");
+const [newUserPassword, setNewUserPassword] = useState("");
   const launchConfetti = () => {
     const end = Date.now() + 2000;
 
@@ -1073,6 +1075,41 @@ const submitMission = async () => {
     }
   };
 
+  const createUser = async () => {
+    try {
+      if (!newUserName.trim() || !newUserPassword.trim()) {
+        alert("Completa usuario y contraseña");
+        return;
+      }
+
+      const existingUsers = await getDocs(collection(db, "users"));
+
+      const exists = existingUsers.docs.some(
+        (doc) =>
+          doc.data()?.name?.toLowerCase() ===
+          newUserName.trim().toLowerCase()
+      );
+
+      if (exists) {
+        alert("Ese usuario ya existe");
+        return;
+      }
+
+      await addDoc(collection(db, "users"), {
+        name: newUserName.trim(),
+        password: newUserPassword,
+      });
+
+      setNewUserName("");
+      setNewUserPassword("");
+
+      alert("Usuario creado correctamente");
+    } catch (error) {
+      console.error(error);
+      alert("Error creando usuario");
+    }
+  };
+
   const handleLogin = async () => {
     if (loading) return;
 
@@ -1702,6 +1739,33 @@ const submitMission = async () => {
               Resetear tiempos
             </button>
           </div>
+        </div>
+
+        <div className="bg-white rounded-3xl border border-zinc-200 p-6 mb-6">
+          <h2 className="text-xl font-semibold mb-4">
+            Crear usuario
+          </h2>
+
+          <input
+            className="w-full p-3 rounded-xl border border-zinc-200 mb-3"
+            placeholder="Nombre de usuario"
+            value={newUserName}
+            onChange={(e) => setNewUserName(e.target.value)}
+          />
+
+          <input
+            className="w-full p-3 rounded-xl border border-zinc-200 mb-3"
+            placeholder="Contraseña"
+            value={newUserPassword}
+            onChange={(e) => setNewUserPassword(e.target.value)}
+          />
+
+          <button
+            className="w-full bg-black text-white py-3 rounded-xl"
+            onClick={createUser}
+          >
+            Crear usuario
+          </button>
         </div>
 
         <div className="bg-white rounded-3xl border border-zinc-200 p-6 mb-6">
