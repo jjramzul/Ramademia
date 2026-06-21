@@ -988,7 +988,7 @@ const submitMission = async () => {
         .split(/\s+/)
         .filter(Boolean).length;
 
-      const hasReasonableAnswer = wordCount >= 8;
+      const hasReasonableAnswer = wordCount >= 3;
 
       const isVideoMission = selectedMission?.type === "video";
 
