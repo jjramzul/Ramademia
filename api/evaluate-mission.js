@@ -8,6 +8,9 @@ const ai = new GoogleGenAI({
 });
 
 export default async function handler(req, res) {
+  console.log("FUNCTION STARTED");
+  console.log("METHOD:", req.method);
+  console.log("BODY:", req.body);
   try {
     const {
       title,
@@ -107,12 +110,14 @@ Devuelve ÚNICAMENTE un JSON válido. No uses markdown, no uses bloques de códi
 }
 `;
 
+    console.log("ABOUT TO CALL GEMINI");
     const result = await ai.models.generateContent({
       model: "gemini-2.5-flash",
       contents: imagePart
         ? [prompt, imagePart]
         : prompt,
     });
+    console.log("GEMINI RESPONSE RECEIVED");
 
     const text = result.text.trim();
 
