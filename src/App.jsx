@@ -809,7 +809,7 @@ const submitMission = async () => {
       }
 
       const evaluationResponse = await fetch(
-        "http://localhost:3001/evaluate-mission",
+        "/api/evaluate-mission",
         {
           method: "POST",
           headers: {
