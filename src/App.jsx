@@ -990,7 +990,15 @@ const submitMission = async () => {
 
       if (evaluation.approved) {
         launchConfetti();
-        loadScores();
+        await loadScores();
+        await loadCompletedMissions(user);
+        await loadUserSubmissions(user);
+
+        setCompletedMissions((prev) => [
+          ...new Set([...prev, selectedMission.id]),
+        ]);
+
+        setIsMissionCompleted(true);
       }
     } catch (error) {
       console.error(error);
@@ -1047,6 +1055,14 @@ const submitMission = async () => {
   };
 
   if (screen === "mission") {
+    // 2) Add currentDayMissions and nextMissionInDay before the return
+    const currentDayMissions = missions;
+
+    const nextMissionInDay = currentDayMissions.find(
+      (m) =>
+        m.id !== selectedMission?.id &&
+        !completedMissions?.includes?.(m.id)
+    );
     return (
       <Layout
         user={user}
@@ -1070,11 +1086,11 @@ const submitMission = async () => {
               {selectedMission?.title}
             </h1>
 
-            <p className="mt-5 text-base sm:text-lg text-zinc-500 max-w-2xl mx-auto">
+            <p className="mt-5 text-base sm:text-lg text-zinc-500 max-w-2xl mx-auto whitespace-pre-line">
               {selectedMission?.description}
             </p>
 
-            <div className="mt-8 inline-flex flex-wrap items-center justify-center gap-3 sm:gap-6 px-4 sm:px-6 py-3 bg-white/70 backdrop-blur-xl rounded-full border border-white/50">
+            <div className="mt-8 flex flex-wrap items-center justify-center gap-3 sm:gap-6 px-4 sm:px-6 py-3 bg-white/70 backdrop-blur-xl rounded-3xl sm:rounded-full border border-white/50 max-w-full mx-auto">
               <span className="flex items-center gap-2 text-zinc-500">
                 <Clock3 size={16} />
                 {selectedMission?.estimatedMinutes} min
@@ -1100,7 +1116,7 @@ const submitMission = async () => {
           </div>
 
 
-          <div className="mt-10 bg-white/70 backdrop-blur-xl rounded-[32px] p-8 border border-white/50 max-w-4xl mx-auto transition-all duration-300 hover:shadow-2xl hover:-translate-y-1">
+          <div className="mt-10 bg-white/70 backdrop-blur-xl rounded-[32px] p-4 sm:p-8 border border-white/50 max-w-4xl mx-auto transition-all duration-300 hover:shadow-2xl hover:-translate-y-1 overflow-hidden">
             {selectedMission?.type === "video" && (
               <div className="mb-8 rounded-[24px] border border-zinc-200 p-4 bg-white">
                 <p className="font-medium mb-3">
@@ -1109,10 +1125,12 @@ const submitMission = async () => {
 
                 {selectedMission.videoUrl?.includes("youtube") ? (
                   <>
-                    <div
-                      id="youtube-player"
-                      className="aspect-video rounded-xl overflow-hidden"
-                    />
+                    <div className="w-full overflow-hidden rounded-xl">
+                      <div
+                        id="youtube-player"
+                        className="w-full aspect-video"
+                      />
+                    </div>
 
                     <div className="mt-4">
                       <div className="h-3 bg-zinc-200 rounded-full overflow-hidden">
@@ -1279,12 +1297,26 @@ const submitMission = async () => {
                   </p>
                 </div>
 
-                <button
-                  className="w-full mt-3 border border-zinc-200 py-3 rounded-xl"
-                  onClick={() => setScreen("day")}
-                >
-                  Volver al día
-                </button>
+                <div className="flex gap-3 mt-3">
+                  <button
+                    className="flex-1 border border-zinc-200 py-3 rounded-xl"
+                    onClick={() => setScreen("day")}
+                  >
+                    Volver al día
+                  </button>
+
+                  {approved && nextMissionInDay && (
+                    <button
+                      className="flex-1 bg-black text-white py-3 rounded-xl"
+                      onClick={async () => {
+                        await loadCompletedMissions(user);
+                        openMission(nextMissionInDay);
+                      }}
+                    >
+                      Siguiente misión
+                    </button>
+                  )}
+                </div>
               </>
             )}
           </div>
@@ -1319,7 +1351,7 @@ const submitMission = async () => {
             {selectedDay?.title}
           </h1>
 
-          <p className="mt-3 text-zinc-500 text-lg">
+          <p className="mt-3 text-zinc-500 text-lg whitespace-pre-line">
             {selectedDay?.description}
           </p>
         </div>
