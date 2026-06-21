@@ -108,7 +108,21 @@ Devuelve ÚNICAMENTE un JSON válido. No uses markdown, no uses bloques de códi
 
     console.log("ABOUT TO CALL GROQ");
 
+    const completion =
+    await groq.chat.completions.create({
+        model: "llama-3.3-70b-versatile",
+        temperature: 0.2,
+        messages: [
+        {
+            role: "user",
+            content: prompt,
+        },
+        ],
+    });
 
+    const text =
+    completion.choices?.[0]?.message?.content?.trim() ||
+    "";
 
     let evaluation;
 
