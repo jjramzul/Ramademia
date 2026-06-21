@@ -1,10 +1,8 @@
-import Groq from "groq-sdk";
 import axios from "axios";
 import mammoth from "mammoth";
 
-const groq = new Groq({
-  apiKey: process.env.GROQ_API_KEY,
-});
+const OPENROUTER_API_KEY =
+  process.env.OPENROUTER_API_KEY;
 
 export default async function handler(req, res) {
   console.log("FUNCTION STARTED");
@@ -106,23 +104,56 @@ Devuelve ÚNICAMENTE un JSON válido. No uses markdown, no uses bloques de códi
 }
 `;
 
-    console.log("ABOUT TO CALL GROQ");
+    console.log("ABOUT TO CALL OPENROUTER");
 
-    const completion =
-    await groq.chat.completions.create({
-        model: "llama-3.3-70b-versatile",
-        temperature: 0.2,
-        messages: [
+    const messages = [
+    {
+        role: "user",
+        content: [
         {
-            role: "user",
-            content: prompt,
+            type: "text",
+            text: prompt,
         },
         ],
+    },
+    ];
+
+    if (imagePart) {
+    messages[0].content.push({
+        type: "image_url",
+        image_url: {
+        url: `data:${imagePart.inlineData.mimeType};base64,${imagePart.inlineData.data}`,
+        },
     });
+    }
+
+    const response = await fetch(
+    "https://openrouter.ai/api/v1/chat/completions",
+    {
+        method: "POST",
+        headers: {
+        Authorization: `Bearer ${OPENROUTER_API_KEY}`,
+        "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+        model: "qwen/qwen2.5-vl-72b-instruct",
+        temperature: 0.2,
+        messages,
+        }),
+    }
+    );
+
+    const data = await response.json();
+
+    console.log(
+    "OPENROUTER RESPONSE:",
+    JSON.stringify(data, null, 2)
+    );
 
     const text =
-    completion.choices?.[0]?.message?.content?.trim() ||
+    data?.choices?.[0]?.message?.content?.trim() ||
     "";
+
 
     let evaluation;
 
@@ -134,10 +165,13 @@ Devuelve ÚNICAMENTE un JSON válido. No uses markdown, no uses bloques de códi
 
       evaluation = JSON.parse(cleanedText);
     } catch (parseError) {
-      console.error("Error parseando respuesta Gemini:", text);
+      console.error(
+        "Error parseando respuesta OpenRouter:",
+        text
+    );
 
       return res.status(500).json({
-        error: "Gemini devolvió un formato inválido",
+        error: "La IA devolvió un formato inválido",
       });
     }
 
@@ -148,10 +182,14 @@ Devuelve ÚNICAMENTE un JSON válido. No uses markdown, no uses bloques de códi
       feedback: evaluation.feedback || "Sin retroalimentación",
     });
   } catch (error) {
-    console.error(error);
+        console.error("FULL ERROR:");
+        console.error(error);
 
-    res.status(500).json({
-      error: "Error evaluando misión",
-    });
-  }
+        res.status(500).json({
+            error:
+            error?.message ||
+            String(error) ||
+            "Error evaluando misión",
+        });
+    }
 }
