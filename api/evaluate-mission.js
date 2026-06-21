@@ -1,6 +1,6 @@
 import { GoogleGenAI } from "@google/genai";
 import axios from "axios";
-import pdf from "pdf-parse";
+import * as pdf from "pdf-parse";
 import mammoth from "mammoth";
 
 const ai = new GoogleGenAI({
