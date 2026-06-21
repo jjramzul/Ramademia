@@ -1184,9 +1184,15 @@ const submitMission = async () => {
 
             <textarea
               value={missionResponse}
-              onChange={(e) => setMissionResponse(e.target.value)}
+              onChange={(e) => {
+                if (timeLeft <= 0) {
+                  alert("⏰ El tiempo de esta misión se agotó. Un administrador debe reiniciar los tiempos.");
+                  return;
+                }
+                setMissionResponse(e.target.value);
+              }}
               rows={8}
-              readOnly={isMissionCompleted}
+              readOnly={isMissionCompleted || timeLeft <= 0}
               disabled={
                 isMissionCompleted ||
                 (selectedMission?.type === "video" && !videoCompleted)
@@ -1204,6 +1210,12 @@ const submitMission = async () => {
             {isMissionCompleted && (
               <p className="mt-3 text-sm text-zinc-500">
                 Estás viendo una misión ya aprobada. Puedes consultar tu respuesta y archivo, pero no modificarla.
+              </p>
+            )}
+
+            {!isMissionCompleted && timeLeft <= 0 && (
+              <p className="mt-3 text-sm text-red-600">
+                ⏰ El tiempo de esta misión se agotó. No puedes modificar ni enviar la respuesta.
               </p>
             )}
 
@@ -1281,6 +1293,8 @@ const submitMission = async () => {
             >
               {isMissionCompleted
                 ? "Ya completada"
+                : timeLeft <= 0
+                ? "Tiempo agotado"
                 : sendingSubmission
                 ? "Evaluando..."
                 : "Enviar respuesta"}
@@ -1305,7 +1319,7 @@ const submitMission = async () => {
                     Volver al día
                   </button>
 
-                  {approved && nextMissionInDay && (
+                  {(approved || timeLeft <= 0) && nextMissionInDay && (
                     <button
                       className="flex-1 bg-black text-white py-3 rounded-xl"
                       onClick={async () => {
